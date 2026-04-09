@@ -1,6 +1,8 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"log"
 	"time"
 
@@ -10,8 +12,12 @@ import (
 )
 
 func main() {
+	portPtr := flag.String("port", "COM6", "USB Port connected to the Twintex2000V")
+
+	flag.Parse()
+
 	client, err := modbus.NewClient(&modbus.ClientConfiguration{
-		URL:      "rtu://COM3",
+		URL:      fmt.Sprintf("rtu://%s", *portPtr),
 		Speed:    9600,
 		DataBits: 8,
 		StopBits: 1,
@@ -46,7 +52,7 @@ func main() {
 	}
 	readState("Step 1: Set Current 100mA")
 
-	err = client.WriteRegister(device.REG_CONTROL, device.CMD_CURR_ENABLE)
+	err = client.WriteRegisters(device.REG_CONTROL, []uint16{device.CMD_CURR_ENABLE})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -58,14 +64,14 @@ func main() {
 	}
 	readState("Step 3: Set Voltage 0V")
 
-	err = client.WriteRegister(device.REG_CONTROL, device.CMD_VOLT_ENABLE)
+	err = client.WriteRegisters(device.REG_CONTROL, []uint16{device.CMD_VOLT_ENABLE})
 	if err != nil {
 		log.Fatal(err)
 	}
 	readState("Step 4: Enable Voltage")
 
 	readState("Before Step 5: Output ON")
-	err = client.WriteRegister(device.REG_CONTROL, device.CMD_OUTPUT_ON)
+	err = client.WriteRegisters(device.REG_CONTROL, []uint16{device.CMD_OUTPUT_ON})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -83,14 +89,14 @@ func main() {
 	}
 	readState("Step 7: Set Ramp 10s")
 
-	err = client.WriteRegister(device.REG_CONTROL, device.CMD_RAMP_ENABLE)
+	err = client.WriteRegisters(device.REG_CONTROL, []uint16{device.CMD_RAMP_ENABLE})
 	if err != nil {
 		log.Fatal(err)
 	}
 	readState("Step 8: Enable Ramp")
 
 	readState("Before Step 9: Final ON")
-	err = client.WriteRegister(device.REG_CONTROL, device.CMD_OUTPUT_ON)
+	err = client.WriteRegisters(device.REG_CONTROL, []uint16{device.CMD_OUTPUT_ON})
 	if err != nil {
 		log.Fatal(err)
 	}
