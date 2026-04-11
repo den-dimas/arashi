@@ -113,7 +113,7 @@ func readData(address uint16, label string, client *modbus.ModbusClient) float32
 		m = "V"
 	} else if address == device.REG_CURR_MEAS || address == device.REG_CURR_SET {
 		dataType = "Current"
-		m = "A"
+		m = "mA"
 	} else {
 		dataType = "Ramp Time"
 		m = "s"
