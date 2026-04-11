@@ -30,6 +30,9 @@ type Twintex2000V struct {
 }
 
 const (
+	REG_VOLT_MEAS = 0x0B00
+	REG_CURR_MEAS = 0x0B02
+
 	REG_CONTROL   = 0x0A00
 	REG_VOLT_SET  = 0x0A05
 	REG_CURR_SET  = 0x0A07

@@ -35,75 +35,97 @@ func main() {
 	defer client.Close()
 	client.SetUnitId(1)
 
-	readState := func(label string) {
-		time.Sleep(150 * time.Millisecond)
-		res, err := client.ReadRegisters(device.REG_VOLT_SET, 4, modbus.HOLDING_REGISTER)
-		if err != nil {
-			log.Fatalf("Read error: %v", err)
-		}
-		v := utils.DecodeFloat(res[0], res[1])
-		i := utils.DecodeFloat(res[2], res[3])
-		log.Printf("[%s] Status -> Voltage: %.2fV, Current: %.4fA", label, v, i)
+	err = client.WriteCoil(0x0500, true)
+	if err != nil {
+		log.Printf("Failed to set remote control on: %v", err)
 	}
+	log.Printf("Set remote control on")
 
 	err = client.WriteRegisters(device.REG_CURR_SET, utils.EncodeFloat(100.0))
 	if err != nil {
 		log.Fatal(err)
 	}
-	readState("Step 1: Set Current 100mA")
+	readData(device.REG_CURR_SET, "CURRENT SET REGISTER", client)
 
 	err = client.WriteRegisters(device.REG_CONTROL, []uint16{device.CMD_CURR_ENABLE})
 	if err != nil {
 		log.Fatal(err)
 	}
-	readState("Step 2: Enable Current")
+	readData(device.REG_CURR_MEAS, "ACTUAL CURRENT VALUE", client)
 
 	err = client.WriteRegisters(device.REG_VOLT_SET, utils.EncodeFloat(0.0))
 	if err != nil {
 		log.Fatal(err)
 	}
-	readState("Step 3: Set Voltage 0V")
+	readData(device.REG_VOLT_SET, "VOLTAGE SET REGISTER", client)
 
 	err = client.WriteRegisters(device.REG_CONTROL, []uint16{device.CMD_VOLT_ENABLE})
 	if err != nil {
 		log.Fatal(err)
 	}
-	readState("Step 4: Enable Voltage")
+	readData(device.REG_VOLT_MEAS, "ACTUAL VOLTAGE VALUE", client)
 
-	readState("Before Step 5: Output ON")
 	err = client.WriteRegisters(device.REG_CONTROL, []uint16{device.CMD_OUTPUT_ON})
 	if err != nil {
 		log.Fatal(err)
 	}
-	readState("After Step 5: Output ON")
+	readData(device.REG_VOLT_MEAS, "ACTUAL VOLTAGE VALUE", client)
+	readData(device.REG_CURR_MEAS, "ACTUAL CURRENT VALUE", client)
 
 	err = client.WriteRegisters(device.REG_VOLT_SET, utils.EncodeFloat(10.0))
 	if err != nil {
 		log.Fatal(err)
 	}
-	readState("Step 6: Set Voltage 10V")
+	readData(device.REG_VOLT_SET, "VOLTAGE SET REGISTER", client)
 
 	err = client.WriteRegisters(device.REG_RAMP_TIME, utils.EncodeFloat(10.0))
 	if err != nil {
 		log.Fatal(err)
 	}
-	readState("Step 7: Set Ramp 10s")
+	readData(device.REG_RAMP_TIME, "RAMP TIME SET REGISTER", client)
 
 	err = client.WriteRegisters(device.REG_CONTROL, []uint16{device.CMD_RAMP_ENABLE})
 	if err != nil {
 		log.Fatal(err)
 	}
-	readState("Step 8: Enable Ramp")
 
-	readState("Before Step 9: Final ON")
 	err = client.WriteRegisters(device.REG_CONTROL, []uint16{device.CMD_OUTPUT_ON})
 	if err != nil {
 		log.Fatal(err)
 	}
-	readState("After Step 9: Final ON")
+	log.Printf("\nFinal Command On\n")
 
 	for j := 0; j < 12; j++ {
 		time.Sleep(1 * time.Second)
-		readState("Monitoring Ramp Progress")
+		readData(device.REG_CURR_MEAS, "ACTUAL CURRENT VALUE", client)
+		readData(device.REG_VOLT_MEAS, "ACTUAL VOLTAGE VALUE", client)
 	}
+}
+
+func readData(address uint16, label string, client *modbus.ModbusClient) float32 {
+	time.Sleep(150 * time.Millisecond)
+
+	var dataType string
+	var m string
+
+	if address == device.REG_VOLT_MEAS || address == device.REG_VOLT_SET {
+		dataType = "Voltage"
+		m = "V"
+	} else if address == device.REG_CURR_MEAS || address == device.REG_CURR_SET {
+		dataType = "Current"
+		m = "A"
+	} else {
+		dataType = "Ramp Time"
+		m = "s"
+	}
+
+	dataRaw, err := client.ReadRegisters(address, 2, modbus.HOLDING_REGISTER)
+	if err != nil {
+		log.Fatalf("Read %s error: %v", dataType, err)
+	}
+
+	d := utils.DecodeFloat(dataRaw[0], dataRaw[1])
+
+	log.Printf("[%s] %s: %.2f%s", label, dataType, d, m)
+	return d
 }
